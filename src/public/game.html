@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>センサからの信号受信</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+  </head>
+
+  <body>
+    <h1>スマホからのセンサ情報を受信</h1>
+    <div>
+      <div>あなたのID: <span id="myid"></span></div>
+      <div>
+        ルームID: <input id="room" type="text" size="10" value="room001" />
+      </div>
+      <button id="connect">ルームに入る</button>
+      <div>受信した情報はコンソールログで確認してください</div>
+      <div>ボールから逃げるゲームです。一定時間でボールが増えます</div>
+    </div>
+
+    <!-- 1. ここにP5.jsを読み込む -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js"></script>
+
+    <script>
+      let socket = io.connect();
+      let myid;
+
+      let room = document.querySelector("#room").value;
+      let btn = document.querySelector("#connect");
+
+      let g = 0;
+      let b = 0;
+
+      btn.addEventListener("click", function () {
+        socket.emit("join", room);
+        btn.remove();
+      });
+
+      socket.on("mylogin", function (data) {
+        myid = data;
+        document.querySelector("#myid").innerHTML = myid;
+        console.log("あなたのID: ", myid);
+      });
+
+      socket.on("sensor", function (data) {
+        g = parseFloat(data.g);
+        b = parseFloat(data.b);
+        console.log(data);
+      });
+
+      let x = 50;
+      let y = 250;
+      let target = [];
+      let target2 = [];
+      let speed = 0.02;
+      let cat;
+      let dis = [];
+      let dx = [];
+      let dy = [];
+      let counter;
+      let ms;
+      let next = 1;
+
+      function preload() {
+        cat = loadImage("stamps/cat03.png");
+      }
+
+      function setup() {
+        createCanvas(500, 500);
+        background(200);
+        imageMode(CENTER);
+        frameRate(60);
+        target = [random(450), random(450), random(450), random(450)];
+        target2 = [random(450), random(450), random(450), random(450)];
+        dx = [random(-2, 2), random(-3, 3), random(-2, 2), random(-3, 3)];
+        dy = [random(-2, 2), random(-3, 3), random(-2, 2), random(-3, 3)];
+        counter = 0;
+      }
+
+      function draw() {
+        if (next == 1) start();
+        if (next == 2) {
+          move();
+          timer();
+        }
+      }
+      function start() {
+        background(0, 200, 100);
+        textSize(20);
+        text("準備が整ったらどこでも良いのでキーを押してください", 0, 250);
+        if (keyIsPressed) {
+          next = 2;
+        }
+      }
+
+      function ball() {
+        if (ms > 60) {
+          circle(target[3], target2[3], 50);
+          target[3] = target[3] + dx[3];
+          target2[3] = target2[3] + dy[3];
+          dis[3] = Math.sqrt(
+            (x - target[3]) * (x - target[3]) +
+              (y - target2[3]) * (y - target2[3])
+          );
+        }
+        if (ms > 40) {
+          circle(target[2], target2[2], 50);
+          target[2] = target[2] + dx[2];
+          target2[2] = target2[2] + dy[2];
+          dis[2] = Math.sqrt(
+            (x - target[2]) * (x - target[2]) +
+              (y - target2[2]) * (y - target2[2])
+          );
+        }
+        if (ms > 20) {
+          circle(target[1], target2[1], 50);
+          target[1] = target[1] + dx[1];
+          target2[1] = target2[1] + dy[1];
+          dis[1] = Math.sqrt(
+            (x - target[1]) * (x - target[1]) +
+              (y - target2[1]) * (y - target2[1])
+          );
+        }
+      }
+
+      function finish() {
+        textSize(50);
+        text("Game Over!", 100, 250);
+        textSize(30);
+        text(ms + "秒間逃げた！", 150, 290);
+      }
+      function timer() {
+        ms = Math.floor(millis() / 1000);
+        textSize(20);
+        text(ms + "秒", 0, 20);
+      }
+
+      function move() {
+        background(200);
+        x = x + speed * 3 * g;
+        y = y + speed * 3 * b;
+        dis[0] = Math.sqrt(
+          (x - target[0]) * (x - target[0]) +
+            (y - target2[0]) * (y - target2[0])
+        );
+
+        target[0] = target[0] + dx[0];
+        target2[0] = target2[0] + dy[0];
+
+        if (counter < 200) {
+          counter++;
+        } else {
+          counter = 0;
+          dx = [random(-2, 4), random(-3, 3), random(-2, 4), random(-3, 3)];
+          dy = [random(-2, 4), random(-3, 3), random(-2, 4), random(-3, 3)];
+        }
+
+        if (target[0] < 0) {
+          target[0] = 0;
+          dx[0] = dx[0] * -1;
+        }
+        if (target[0] > width) {
+          target[0] = width;
+          dx[0] = dx[0] * -1;
+        }
+        if (target2[0] < 0) {
+          target2[0] = 0;
+          dy[0] = dy[0] * -1;
+        }
+        if (target2[0] > height) {
+          target2[0] = height;
+          dy[0] = dy[0] * -1;
+        }
+
+        if (target[1] < 0) {
+          target[1] = 0;
+          dx[1] = dx[1] * -1;
+        }
+        if (target[1] > width) {
+          target[1] = width;
+          dx[1] = dx[1] * -1;
+        }
+        if (target2[1] < 0) {
+          target2[1] = 0;
+          dy[1] = dy[1] * -1;
+        }
+        if (target2[1] > height) {
+          target2[1] = height;
+          dy[1] = dy[1] * -1;
+        }
+
+        if (target[2] < 0) {
+          target[2] = 0;
+          dx[2] = dx[2] * -1;
+        }
+        if (target[2] > width) {
+          target[2] = width;
+          dx[2] = dx[2] * -1;
+        }
+        if (target2[2] < 0) {
+          target2[2] = 0;
+          dy[2] = dy[2] * -1;
+        }
+        if (target2[2] > height) {
+          target2[2] = height;
+          dy[2] = dy[2] * -1;
+        }
+
+        if (target[3] < 0) {
+          target[3] = 0;
+          dx[3] = dx[3] * -1;
+        }
+        if (target[3] > width) {
+          target[3] = width;
+          dx[3] = dx[3] * -1;
+        }
+        if (target2[3] < 0) {
+          target2[3] = 0;
+          dy[3] = dy[3] * -1;
+        }
+        if (target2[3] > height) {
+          target2[3] = height;
+          dy[3] = dy[3] * -1;
+        }
+
+        if (dis[0] < 40 || dis[1] < 40 || dis[2] < 40 || dis[3] < 40) {
+          background(255, 0, 100);
+          finish();
+          delete image;
+        }
+        circle(target[0], target2[0], 50);
+        image(cat, x, y, 50, 50);
+        ball();
+      }
+    </script>
+  </body>
+</html>
